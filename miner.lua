@@ -1,13 +1,21 @@
+-- Konfiguration
+print("Willkommen bei Stripmining")
+print("Der Fuel muss in Slot 16 platziert werden!")
+print("Gebe die Laenge des Tunnels ein!")
+mainLength = tonumber(read())
+
+print("Gebe die Laenge der Zweige ein!")
+branchLength = tonumber(read())
+
+print("Gebe den Abstand zwischen den Zweigen ein!")
+branchGap = tonumber(read())
+
 function refuel() 
     turtle.select(16)
     turtle.refuel(1)
 end
 
 ---------------
-
-mainLength = 4
-branchLength = 1
-branchGap = 3
 
 energySlot = 16
 
@@ -27,7 +35,7 @@ modem = peripheral.wrap("left")
 turtle.select(1)
 
 print(turtle.getFuelLevel())
---refuel()
+refuel()
 
 function turnBack()
     turtle.turnRight()
