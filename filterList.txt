@@ -1,0 +1,9 @@
+minecraft:gold_ore
+minecraft:iron_ore
+minecraft:coal_ore  minecraft:coal
+minecraft:lapis_ore minecraft:lapis_lazuli
+minecraft:diamond_ore   minecraft:diamond
+minecraft:redstone_ore  minecraft:redstone
+minecraft:emerald_ore   minecraft:emerald
+minecraft:nether_quartz_ore minecraft:quartz
+minecraft:nether_gold_ore

@@ -1,6 +1,17 @@
+args = {...}
+
+if args[1] ~= nil then
+    fillFilter(args[1])
+else
+    shell.run("chooseOres.lua")
+    fillFilter("ores")
+end
+
 -- Konfiguration
 print("==========================")
 print("Willkommen bei Stripmining")
+print("eine Chest muss UNTERHALB des Turtles sein")
+print("Um dort die Erze abzulegen")
 print()
 print("Fuel oder Energiequellen Slot: [1;16]")
 energySlot = tonumber(read())
@@ -23,32 +34,46 @@ function refuel()
     turtle.refuel(1)
 end
 
-filter = {
-    "minecraft:stone",
-    "minecraft:andesite", 
-    "minecraft:gravel",
-    "minecraft:dirt"
-}
+filter = { }
 
 port  = 5000
 portP = 5001
 
+function fillFilter(filename)
+    if not fs.exists(filename) then
+        print("ERROR: file with name: "..filename.." NOT found")
+        return
+    end
+    local f = fs.open(filename, "r")
+    while true 
+        line = f.readLine()
+        if line == nil then break end
+        table.insert(filter, line)
+    end
+    f.close()
+end
+
 -- SETUP
 function SETUP() 
     distToHome, visitedBranches = 0, 0
+    turtle.select(1)
+    
     modem = peripheral.wrap("left")
 
-    if not (modem == nil) then
-        print("--------------------------------")
-        print("Wireless Modem Support activated")
-        print("Status Port: "..port)
-        print("Prints Port: "..portP)
-        print("--------------------------------")
+    if modem ~= nil then
         modem.open(port)
         modem.open(portP)
+        mprint("--------------------------------")
+        mprint("Wireless Modem Support activated")
+        mprint("Status Port: "..port)
+        mprint("Prints Port: "..portP)
+        mprint()
     end
-
-    turtle.select(1)
+    
+    mprint("--------------------------------")
+    mprint("Whitelisted Bloks: ")
+    for i=1, #filter do mprint(filter[i]) end
+    mprint("--------------------------------")
     
     mprint()
     mprint("energySlot:   "..energySlot)
@@ -57,8 +82,9 @@ function SETUP()
     mprint("branchGap:    "..branchGap)
     mprint()
     
-    mprint("Fuel Level: "..turtle.getFuelLevel())
     refuel()
+    mprint("Fuel Level: "..turtle.getFuelLevel())
+    mprint("--------------------------------")
 end
 
 function turnBack()
@@ -96,11 +122,20 @@ function checkOres()
     turtle.turnRight()
 end
 
-function oreType()
-    succes, data = turtle.inspect()
-    if checkFilter(data.name) then
-       mprint("found "..data.name)
+function oreType(dir)
+    succes, dataF = turtle.inspect()
+    succes, dataD = turtle.inspectDown()
+    succes, dataU = turtle.inspectUp()
+
+    if checkFilter(dataF.name) then
+       mprint("found Forward"..dataF.name)
        turtle.dig()
+    end if checkFilter(dataD.name) then
+        mprint("found Down"..dataD.name)
+        turtle.digDown()
+    end if checkFilter(dataU.name) then
+        mprint("found Up"..dataU.name)
+        turtle.digUp()
     end
 end
 
@@ -119,17 +154,65 @@ function generalMove()
 end
 
 function checkFuel()
+    turtle.select(energySlot)
+    if turtle.getFuelLevel() <= 2 * 3*branchLength then
+        if turtle.refuel() then
+            mprint("refueled: "..turtle.getFuelLevel().." @ "..distToHome)
+        else
+            mprint("refuel: FAILED! @ "..distToHome)
+            mprint("Self Halt until higher fuelLevel")
+            local  isClear
+            repeat 
+                if turtle.getItemCount(energySlot) > 0 then
+                    isClear = turtle.refuel()
+                end            
+            until isClear
+        end
+    end
+    turtle.select(1)
 end
 
-function inventoryCheck()    
+function inventoryCheck(name, leftIndex)
+    threshold = 0.75*64
+
+    leftIndex = leftIndex or 0
+    for i=1, 16 do
+        turtle.select(i)
+        data = turtle.getItemDetail()
+
+        if data ~= nil and i ~= energySlot and i ~= leftIndex then
+            if name ~= nil then --recursion mode
+                if data.count < threshold then -- is there a slot there is enougth spaceleft
+                    return true
+                end
+            else
+                if data.count >= threshold then
+                    if not inventoryCheck(data.name, i) then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
 end
 
-function dumpInventory()
+function dumpInventory(inChest)
+    inChest = inChest or false
     mprint("dumping Inventory @ "..distToHome)
     for i=1, 16 do
         turtle.select(i)
         data = turtle.getItemDetail()
-        if not (data == nil) and not (i == energySlot) then
+
+        if inChest then
+            if not turtle.dropDown() then
+                mprint("Chest is full: Halting until its clear")
+                local  isClear
+                repeat isClear = turtle.dropDown() until isClear
+            else
+                mprint("Inventory put in Chest")
+            end
+        elseif data ~= nil and i ~= energySlot then
             if not checkFilter(data.name) then
                 turtle.drop()
             end
@@ -143,18 +226,20 @@ function MAIN()
         distToHome = distToHome + 1
                 
         if math.mod(distToHome, branchGap+1) == 0 then
+            checkFuel()
             turtle.turnRight()
             carveBranch()
+
+            checkFuel()
             carveBranch()
             turtle.turnLeft()
             dumpInventory()        
         end
         
         generalMove()
-        if inventoryCheck() or checkFuel() then
-            turnBack()
-            for i=distToHome, 0, -1 do turtle.forward() end
-            turnBack()
+        if inventoryCheck() then
+            for i=0, distToHome do turtle.back() end
+            dumpInventory(true)
             for i=0, distToHome do turtle.forward() end
         end
     until distToHome >= mainLength
@@ -164,6 +249,8 @@ function MAIN()
     for back=mainLength, 0, -1 do 
         turtle.back()
     end
+
+    dumpInventory(true)
     
     mprint()
     mprint("==================================")
@@ -176,18 +263,23 @@ function mprint(data)
     else
         print(data)
     end
-    if not (modem == nil) then
+    if modem ~= nil then
         modem.transmit(portP,portP,data)
     end
 end
 
 function transmitInfo()
-    if not (modem == nil) then    
-        modem.transmit(port,port,{
-            {"Fuel:   ", turtle.getFuelLevel()},
-            {"Dist:   ", distToHome},
-            {"Branch: ", visitedBranches}
-        })
+    if modem ~= nil then    
+        info = {
+            {"Fuel:    ", turtle.getFuelLevel()},
+            {"Dist:    ", distToHome},
+            {"Branch:  ", visitedBranches}
+        }
+        for i=1, 16 do
+            table.insert(info, {"Slot_"..i, turtle.getItemDetail(i)})
+        end
+
+        modem.transmit(port,port, info)
     end
 end
 
