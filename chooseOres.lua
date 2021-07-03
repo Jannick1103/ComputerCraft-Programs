@@ -5,9 +5,9 @@ print("Gebe den Namen der Konfigurationsdatei ein!")
 print("Standardwert: ores")
 
 fname = read()
-if fname == nil then fname = "ores" end
+if fname == nil then fname = "ores.lua" end
 
-f = fs.open(fname, "w")
+f = fs.open(fname..".lua", "w")
 
 function question() 
 	local ans = read()
