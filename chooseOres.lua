@@ -100,6 +100,12 @@ if question() then
 	f.writeLine("techreborn:lead_ore")
 end
 
+print("Inferium")
+if question() then
+	f.writeLine("mysticalagriculture:inferium_ore")
+	f.writeLine("mysticalagriculture:inferium_essence")
+end
+
 
 print(" ")
 print("Konfiguration abgeschlossen!")
