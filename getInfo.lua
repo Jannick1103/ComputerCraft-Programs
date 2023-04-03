@@ -2,6 +2,8 @@ shell.run("clear")
 
 side = {modem="back", display="top"}
 
+arrowKeys = { 203, 205 }
+
 print("Port number: default 3000")
 port  = tonumber( read() ) -- 3000
 print("PortPrint number: default 3001")
@@ -53,7 +55,7 @@ function getInfo()
             showInfo(event[5])
         end
     elseif event[1] == "key_up" then
-        if event[2] == 262 or event[2] == 263 then
+        if event[2] == arrowKeys[1] or event[2] == arrowKeys[2] then
             inInfoMode = not inInfoMode
             shell.run("clear")
             if inInfoMode then
